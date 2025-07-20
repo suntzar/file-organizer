@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="pt-br">
+    <!-- O tema escuro é o padrão da Noxss -->
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        
+        <!-- Prevenção de FOUC (Flash Of Unstyled Content) -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
+        
+        <title>Organizador de Arquivos</title>
+
+        <!-- BIBLIOTECA NOXSS -->
+        <link rel="stylesheet" href="css/noxss.css" />
+        
+        <!-- DEPENDÊNCIAS -->
+        <script defer src="https://unpkg.com/feather-icons"></script>
+
+        <!-- ESTILOS DO APLICATIVO -->
+        <style>
+            :root {
+                /* Ajuste fino da fonte base */
+                --noxss-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            }
+            .placeholder-content {
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                text-align: center; height: 100%; gap: 1.5rem; padding: 2rem; color: var(--noxss-text-secondary);
+            }
+            .placeholder-content .noxss-icon {
+                width: 64px; height: 64px; stroke-width: 1; color: var(--noxss-accent-primary); opacity: 0.5;
+            }
+            .content-wrapper {
+                max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;
+            }
+            #logs-container {
+                font-family: var(--noxss-font-family-monospace); font-size: 0.85rem; line-height: 1.6;
+                white-space: pre-wrap; word-break: break-all;
+            }
+            .log-entry { margin-bottom: 0.5em; }
+            .log-entry.success { color: var(--noxss-color-success); }
+            .log-entry.error { color: var(--noxss-color-danger); }
+            .log-entry.info { color: var(--noxss-text-secondary); }
+        </style>
+    </head>
+    <body data-noxss-layout="app">
+        <div class="noxss-layout">
+            <!-- 1. BARRA DE NAVEGAÇÃO SUPERIOR -->
+            <nav class="noxss-navbar">
+                <a class="noxss-navbar__brand" href="#"><i data-feather="folder" class="noxss-icon"></i> <span>Organizador</span></a>
+            </nav>
+
+            <!-- 2. CONTEÚDO PRINCIPAL COM ABAS -->
+            <main class="noxss-layout__content">
+                <div class="noxss-tabs" data-default-tab="home">
+                    <!-- Abas para Desktop -->
+                    <div class="noxss-tabs__header" style="display: none;" id="desktop-nav">
+                        <button class="noxss-tabs__header-button" data-tab-id="home"><i class="noxss-icon" data-feather="home"></i> Início</button>
+                        <button class="noxss-tabs__header-button" data-tab-id="settings"><i class="noxss-icon" data-feather="settings"></i> Regras</button>
+                        <button class="noxss-tabs__header-button" data-tab-id="logs"><i class="noxss-icon" data-feather="terminal"></i> Logs</button>
+                    </div>
+
+                    <!-- Painéis de Conteúdo -->
+                    <div class="noxss-tabs__content-area">
+                        <!-- Painel: Início -->
+                        <div class="noxss-tabs__panel" id="panel-home" data-fab-visible data-fab-icon="play" data-fab-action="app.organizeFiles()">
+                            <div class="content-wrapper">
+                                <h2 class="h3">Painel de Controle</h2>
+                                <p class="text-secondary">Selecione uma pasta alvo nas configurações e clique no botão de "play" para iniciar a organização.</p>
+                                
+                                <div class="noxss-card u-mt-4">
+                                    <div class="noxss-card__body">
+                                        <div class="noxss-card__subtitle">PASTA ALVO ATUAL</div>
+                                        <p id="target-folder-display">Nenhuma pasta selecionada. Vá para a aba "Regras" para configurar.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Painel: Regras -->
+                        <div class="noxss-tabs__panel" id="panel-settings">
+                            <div class="content-wrapper">
+                                <h2>Regras de Organização</h2>
+                                
+                                <!-- Configuração da Pasta -->
+                                <div class="noxss-form-group">
+                                    <label class="noxss-label">1. Pasta para Organizar</label>
+                                    <button class="noxss-btn noxss-btn--secondary" id="btn-choose-folder">
+                                        <i class="noxss-icon" data-feather="folder-plus"></i>
+                                        <span>Escolher Pasta</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="noxss-form-group">
+                                    <label for="output-folder-name" class="noxss-label">2. Nome da Pasta de Saída</label>
+                                    <input type="text" id="output-folder-name" class="noxss-input" value="Organizados">
+                                </div>
+                                <hr/>
+                                
+                                <!-- Lista de Regras -->
+                                <div class="u-d-flex u-justify-between u-align-center u-mb-3">
+                                    <h3 class="h5 u-mb-0">3. Categorias e Extensões</h3>
+                                    <button class="noxss-btn noxss-btn--primary noxss-btn--icon" id="btn-add-rule" aria-label="Adicionar Nova Regra">
+                                        <i class="noxss-icon" data-feather="plus"></i>
+                                    </button>
+                                </div>
+                                <div id="rules-container">
+                                    <!-- As regras serão inseridas aqui pelo JS -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Painel: Logs -->
+                        <div class="noxss-tabs__panel" id="panel-logs">
+                             <div class="content-wrapper">
+                                <h2>Logs da Última Operação</h2>
+                                <div class="noxss-card noxss-card--flat" style="background-color: var(--noxss-bg-main);">
+                                    <div class="noxss-card__body">
+                                        <div id="logs-container">
+                                            <p class="text-secondary">Nenhuma operação realizada ainda.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 3. BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) -->
+            <nav class="noxss-navbar noxss-navbar--bottom noxss-active-bg-button" id="mobile-nav">
+                <button class="noxss-tabs__nav-button" data-tab-id="home" aria-label="Início"><i class="noxss-icon" data-feather="home"></i></button>
+                <button class="noxss-tabs__nav-button" data-tab-id="settings" aria-label="Regras"><i class="noxss-icon" data-feather="settings"></i></button>
+                <button class="noxss-tabs__nav-button" data-tab-id="logs" aria-label="Logs"><i class="noxss-icon" data-feather="terminal"></i></button>
+            </nav>
+        </div>
+        
+        <!-- Botão de Ação Flutuante (FAB) -->
+        <button class="noxss-fab is-hidden" id="main-fab" aria-label="Iniciar Organização"></button>
+
+        <!-- Scripts -->
+        <script src="cordova.js"></script>
+        <script src="js/noxss.js"></script>
+        <script>
+        document.addEventListener('deviceready', () => {
+            // Inicializa ícones Feather
+            if (window.feather) feather.replace();
+
+            // Configurações da Status Bar
+            if (window.StatusBar) {
+                StatusBar.overlaysWebView(false);
+                StatusBar.backgroundColorByHexString('#202023');
+                StatusBar.styleLightContent();
+            }
+            
+            // Lógica principal do App
+            const app = {
+                // --- ELEMENTOS DA UI ---
+                els: {
+                    targetFolderDisplay: document.getElementById('target-folder-display'),
+                    btnChooseFolder: document.getElementById('btn-choose-folder'),
+                    outputFolderNameInput: document.getElementById('output-folder-name'),
+                    rulesContainer: document.getElementById('rules-container'),
+                    btnAddRule: document.getElementById('btn-add-rule'),
+                    logsContainer: document.getElementById('logs-container')
+                },
+
+                // --- BANCO DE DADOS (localStorage) ---
+                db: {
+                    settings: {
+                        targetFolderUri: null,
+                        outputFolderName: 'Organizados',
+                        rules: [
+                            { id: Date.now() + 1, name: 'Imagens', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'] },
+                            { id: Date.now() + 2, name: 'Documentos', extensions: ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx', 'odt'] },
+                            { id: Date.now() + 3, name: 'Vídeos', extensions: ['mp4', 'mov', 'avi', 'mkv', 'webm'] },
+                            { id: Date.now() + 4, name: 'Músicas', extensions: ['mp3', 'wav', 'ogg', 'flac'] },
+                            { id: Date.now() + 5, name: 'Arquivos Compactados', extensions: ['zip', 'rar', '7z', 'tar', 'gz'] }
+                        ]
+                    },
+                    load() {
+                        const savedSettings = localStorage.getItem('fileOrganizerSettings');
+                        if (savedSettings) {
+                            this.settings = JSON.parse(savedSettings);
+                        }
+                    },
+                    save() {
+                        localStorage.setItem('fileOrganizerSettings', JSON.stringify(this.settings));
+                    }
+                },
+
+                // --- INICIALIZAÇÃO ---
+                init() {
+                    this.db.load();
+                    this.renderAll();
+                    this.addEventListeners();
+                    this.checkPermissions();
+                },
+
+                // --- RENDERIZAÇÃO DA UI ---
+                renderAll() {
+                    this.renderTargetFolder();
+                    this.renderOutputFolderName();
+                    this.renderRules();
+                },
+                
+                renderTargetFolder() {
+                    this.els.targetFolderDisplay.textContent = this.db.settings.targetFolderUri || 'Nenhuma pasta selecionada.';
+                },
+
+                renderOutputFolderName() {
+                    this.els.outputFolderNameInput.value = this.db.settings.outputFolderName;
+                },
+
+                renderRules() {
+                    this.els.rulesContainer.innerHTML = '';
+                    if (this.db.settings.rules.length === 0) {
+                        this.els.rulesContainer.innerHTML = '<p class="text-secondary">Nenhuma regra definida. Clique no botão "+" para adicionar uma.</p>';
+                        return;
+                    }
+                    this.db.settings.rules.forEach(rule => {
+                        const ruleCard = document.createElement('div');
+                        ruleCard.className = 'noxss-card u-mb-3';
+                        ruleCard.innerHTML = `
+                            <div class="noxss-card__body">
+                                <div class="u-d-flex u-justify-between u-align-center">
+                                    <div class="noxss-card__title">${rule.name}</div>
+                                    <div>
+                                        <button class="noxss-btn noxss-btn--icon noxss-btn--secondary" data-action="edit" data-id="${rule.id}"><i class="noxss-icon" data-feather="edit-2"></i></button>
+                                        <button class="noxss-btn noxss-btn--icon noxss-btn--danger" data-action="delete" data-id="${rule.id}"><i class="noxss-icon" data-feather="trash-2"></i></button>
+                                    </div>
+                                </div>
+                                <p class="text-secondary" style="word-break: break-all;">
+                                    .${rule.extensions.join(', .')}
+                                </p>
+                            </div>
+                        `;
+                        this.els.rulesContainer.appendChild(ruleCard);
+                    });
+                    feather.replace(); // Atualiza os ícones
+                },
+
+                // --- EVENTOS ---
+                addEventListeners() {
+                    this.els.btnChooseFolder.addEventListener('click', () => this.chooseFolder());
+                    this.els.outputFolderNameInput.addEventListener('change', (e) => {
+                        this.db.settings.outputFolderName = e.target.value.trim() || 'Organizados';
+                        this.db.save();
+                    });
+                    this.els.btnAddRule.addEventListener('click', () => this.editRule());
+
+                    this.els.rulesContainer.addEventListener('click', (e) => {
+                        const button = e.target.closest('button');
+                        if (!button) return;
+                        
+                        const action = button.dataset.action;
+                        const id = Number(button.dataset.id);
+
+                        if (action === 'edit') this.editRule(id);
+                        if (action === 'delete') this.deleteRule(id);
+                    });
+                },
+                
+                // --- LÓGICA DAS REGRAS ---
+                editRule(id = null) {
+                    const isNew = id === null;
+                    const rule = isNew ? { name: '', extensions: [] } : this.db.settings.rules.find(r => r.id === id);
+
+                    if(!rule && !isNew) {
+                         navigator.notification.alert('Regra não encontrada.', null, 'Erro', 'OK');
+                         return;
+                    }
+
+                    const title = isNew ? 'Adicionar Nova Regra' : 'Editar Regra';
+                    const extensionsStr = rule.extensions.join(', ');
+
+                    navigator.notification.prompt(
+                        'Nome da Categoria (Ex: Imagens):',
+                        (result) => {
+                            if (result.buttonIndex !== 1 || !result.input1) return;
+                            const newName = result.input1.trim();
+                            
+                            navigator.notification.prompt(
+                                'Extensões separadas por vírgula (Ex: jpg, png, gif):',
+                                (extResult) => {
+                                    if (extResult.buttonIndex !== 1) return;
+                                    const newExtensions = extResult.input1.toLowerCase().split(',')
+                                        .map(ext => ext.trim().replace('.', ''))
+                                        .filter(ext => ext);
+
+                                    if (isNew) {
+                                        this.db.settings.rules.push({ id: Date.now(), name: newName, extensions: newExtensions });
+                                    } else {
+                                        rule.name = newName;
+                                        rule.extensions = newExtensions;
+                                    }
+                                    this.db.save();
+                                    this.renderRules();
+                                },
+                                title, ['Salvar', 'Cancelar'], extensionsStr
+                            );
+                        },
+                        title, ['Próximo', 'Cancelar'], rule.name
+                    );
+                },
+
+                deleteRule(id) {
+                     navigator.notification.confirm(
+                        'Tem certeza que deseja excluir esta regra?',
+                        (buttonIndex) => {
+                            if (buttonIndex === 1) { // 1 = OK
+                                this.db.settings.rules = this.db.settings.rules.filter(r => r.id !== id);
+                                this.db.save();
+                                this.renderRules();
+                            }
+                        },
+                        'Confirmar Exclusão', ['OK', 'Cancelar']
+                    );
+                },
+
+                // --- LÓGICA DO SISTEMA DE ARQUIVOS ---
+                checkPermissions() {
+                    const permissions = cordova.plugins.permissions;
+                    permissions.checkPermission(permissions.READ_EXTERNAL_STORAGE, (status) => {
+                        if (!status.hasPermission) {
+                            permissions.requestPermission(permissions.READ_EXTERNAL_STORAGE, null, null);
+                        }
+                    }, null);
+                },
+
+                chooseFolder() {
+                    fileChooser.open({ "mime": "inode/directory" }, (uri) => {
+                        this.db.settings.targetFolderUri = uri;
+                        this.db.save();
+                        this.renderTargetFolder();
+                    }, (error) => {
+                        navigator.notification.alert(`Erro ao selecionar pasta: ${error}`, null, 'Erro', 'OK');
+                    });
+                },
+                
+                log(message, type = 'info') {
+                     const logEntry = document.createElement('div');
+                     logEntry.className = `log-entry ${type}`;
+                     logEntry.textContent = `[${type.toUpperCase()}] ${message}`;
+                     this.els.logsContainer.appendChild(logEntry);
+                },
+
+                async organizeFiles() {
+                    this.els.logsContainer.innerHTML = ''; // Limpa logs antigos
+                    this.log('Iniciando organização...');
+
+                    const { targetFolderUri, outputFolderName, rules } = this.db.settings;
+
+                    if (!targetFolderUri) {
+                        this.log('Pasta alvo não definida. Configure na aba "Regras".', 'error');
+                        navigator.notification.alert('Por favor, selecione uma pasta alvo primeiro.', null, 'Aviso', 'OK');
+                        return;
+                    }
+                    
+                    try {
+                        const targetDir = await this.resolveUri(targetFolderUri);
+                        const outputDir = await this.getOrCreateDir(targetDir, outputFolderName);
+                        
+                        const reader = targetDir.createReader();
+                        const entries = await this.readEntries(reader);
+
+                        let movedCount = 0;
+                        for (const entry of entries) {
+                            if (entry.isFile) {
+                                const extension = entry.name.split('.').pop().toLowerCase();
+                                const rule = rules.find(r => r.extensions.includes(extension));
+
+                                if (rule) {
+                                    const categoryDir = await this.getOrCreateDir(outputDir, rule.name);
+                                    await this.moveFile(entry, categoryDir);
+                                    this.log(`Movido: ${entry.name} -> ${rule.name}/`, 'success');
+                                    movedCount++;
+                                }
+                            }
+                        }
+                        
+                        if(movedCount > 0) {
+                            this.log(`Organização concluída! ${movedCount} arquivos movidos.`);
+                        } else {
+                            this.log('Nenhum arquivo para organizar foi encontrado na pasta alvo.');
+                        }
+                        
+                        navigator.notification.alert(`Organização concluída! ${movedCount} arquivos foram movidos.`, null, 'Sucesso', 'OK');
+
+                    } catch (error) {
+                        this.log(`ERRO FATAL: ${JSON.stringify(error)}`, 'error');
+                        navigator.notification.alert('Ocorreu um erro durante a organização. Verifique os logs.', null, 'Erro', 'OK');
+                    }
+                },
+                
+                // --- HELPERS DO SISTEMA DE ARQUIVOS (PROMISSIFICADOS) ---
+                resolveUri(uri) {
+                    return new Promise((resolve, reject) => window.resolveLocalFileSystemURL(uri, resolve, reject));
+                },
+
+                getOrCreateDir(parentDir, dirName) {
+                    return new Promise((resolve, reject) => {
+                        parentDir.getDirectory(dirName, { create: true }, resolve, reject);
+                    });
+                },
+
+                readEntries(dirReader) {
+                    return new Promise((resolve, reject) => dirReader.readEntries(resolve, reject));
+                },
+                
+                moveFile(fileEntry, targetDir) {
+                    return new Promise((resolve, reject) => {
+                        fileEntry.moveTo(targetDir, fileEntry.name, resolve, reject);
+                    });
+                }
+            };
+            
+            // Inicia o aplicativo
+            app.init();
+
+            // Expor `app` globalmente para o FAB
+            window.app = app;
+
+        }, false);
+        </script>
+    </body>
+</html>

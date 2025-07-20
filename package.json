@@ -1,0 +1,42 @@
+{
+  "name": "com.meuapp.organizador",
+  "displayName": "Organizador de Arquivos",
+  "version": "1.0.0",
+  "description": "Um aplicativo para organizar arquivos por extensão de forma configurável.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "organizer",
+    "files"
+  ],
+  "author": "Seu Nome",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "cordova-android": "^12.0.1",
+    "cordova-plugin-android-permissions": "^1.1.5",
+    "cordova-plugin-dialogs": "^2.0.2",
+    "cordova-plugin-file": "^8.1.0",
+    "cordova-plugin-filechooser": "^1.2.0",
+    "cordova-plugin-splashscreen": "^6.0.1",
+    "cordova-plugin-statusbar": "^4.0.0"
+  },
+  "cordova": {
+    "platforms": [
+      "android"
+    ],
+    "plugins": {
+      "cordova-plugin-splashscreen": {},
+      "cordova-plugin-statusbar": {
+        "StatusBarOverlaysWebView": false,
+        "StatusBarBackgroundColor": "#202023",
+        "StatusBarStyle": "lightcontent"
+      },
+      "cordova-plugin-file": {},
+      "cordova-plugin-filechooser": {},
+      "cordova-plugin-android-permissions": {}
+    }
+  }
+}
