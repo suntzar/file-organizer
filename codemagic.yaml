@@ -1,26 +1,47 @@
 # codemagic.yaml
-# This workflow builds your Cordova app for Android.
+# Versão corrigida e aprimorada
 workflows:
   android-debug-build:
     name: Construir APK de Teste v2
+    # Define a máquina de build (um Mac Mini M2 é uma boa escolha)
+    instance_type: mac_mini_m2
     environment:
-      # Use a recent Node.js version
-      node: 20.x
-      # Define Java version for Android builds
+      # CORREÇÃO: Especifica a versão principal do Node.js sem o ".x"
+      node: 20
+      # Mantém a versão do Java
       java: 17
+      # Garante que as ferramentas corretas estão no PATH do sistema
+      groups:
+        - android-sdk
     scripts:
-      - name: Instalar a CLI do Cordova
+      - name: Instalar a CLI do Cordova e dependências
         script: |
+          set -e # Falha o script imediatamente se um comando falhar
+          set -x # Mostra os comandos que estão sendo executados
+          
           npm install -g cordova
-      - name: Instalar dependÃªncias do projeto
-        script: |
           npm install
-      - name: Adicionar plataforma Android (usando a versÃ£o do package.json)
+      - name: Adicionar plataforma Android
         script: |
-          cordova platform add android
+          set -e
+          set -x
+
+          # Garante que a versão correta do cordova-android seja usada
+          cordova platform add android@12.0.1
       - name: Construir o APK de teste (Debug)
         script: |
+          set -e
+          set -x
+
           cordova build android --debug
     artifacts:
-      # Caminho corrigido para o APK gerado
+      # O caminho para o APK gerado
       - platforms/android/app/build/outputs/apk/debug/app-debug.apk
+    publishing:
+      # Opcional: Envia um e-mail com o link do artefato ao final do build
+      email:
+        recipients:
+          - seu-email@exemplo.com # <-- MUDE PARA O SEU E-MAIL
+        notify:
+          success: true
+          failure: true
