@@ -1,18 +1,14 @@
 # codemagic.yaml
-# Versão corrigida e aprimorada
+# Versão 3 - Corrigido o problema das Android Build Tools
 workflows:
   android-debug-build:
-    name: Construir APK de Teste v2
-    # Define a máquina de build (um Mac Mini M2 é uma boa escolha)
+    name: Construir APK de Teste v3
     instance_type: mac_mini_m2
     environment:
-      # CORREÇÃO: Especifica a versão principal do Node.js sem o ".x"
       node: 20
-      # Mantém a versão do Java
       java: 17
-      # Garante que as ferramentas corretas estão no PATH do sistema
       groups:
-        - android-sdk
+        - android-sdk # Garante que as ferramentas do Android SDK estão no PATH
     scripts:
       - name: Instalar a CLI do Cordova e dependências
         script: |
@@ -26,8 +22,17 @@ workflows:
           set -e
           set -x
 
-          # Garante que a versão correta do cordova-android seja usada
           cordova platform add android@12.0.1
+      # ====================================================================
+      # NOVO PASSO: Instala a versão exata das Build Tools necessárias
+      # ====================================================================
+      - name: Instalar as Android Build Tools necessárias
+        script: |
+          set -e
+          set -x
+          
+          # Aceita as licenças automaticamente e instala a versão 33.0.2
+          yes | sdkmanager --install "build-tools;33.0.2"
       - name: Construir o APK de teste (Debug)
         script: |
           set -e
@@ -38,7 +43,6 @@ workflows:
       # O caminho para o APK gerado
       - platforms/android/app/build/outputs/apk/debug/app-debug.apk
     publishing:
-      # Opcional: Envia um e-mail com o link do artefato ao final do build
       email:
         recipients:
           - seu-email@exemplo.com # <-- MUDE PARA O SEU E-MAIL
