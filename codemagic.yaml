@@ -1,17 +1,54 @@
-# Copie e cole este código inteiro no lugar do antigo.
+# codemagic.yaml
+# Versão FINAL - Instala as ferramentas Android necessárias e usa a versão correta do Node.js
 workflows:
   android-debug-build:
-    name: Construir APK de Teste v2
+    name: Construir APK de Teste
+    instance_type: mac_mini_m2
+    environment:
+      # Especifica a versão principal do Node.js
+      node: 20
+      # Especifica a versão do Java
+      java: 17
+      # Garante que as ferramentas do Android SDK estão prontas para uso
+      groups:
+        - android-sdk
     scripts:
-      - name: Instalar ferramentas
+      - name: Instalar a CLI do Cordova e dependências do projeto
         script: |
+          set -e # Falha o script imediatamente se um comando falhar
+          set -x # Mostra os comandos que estão sendo executados
+          
           npm install -g cordova
+          npm install
       - name: Adicionar plataforma Android
         script: |
-          cordova platform add android
+          set -e
+          set -x
+
+          # Usa a versão específica do seu package.json para consistência
+          cordova platform add android@12.0.1
+      # --- ESTE É O PASSO CRÍTICO QUE ESTAVA FALTANDO ---
+      - name: Instalar as Android Build Tools v33.0.2
+        script: |
+          set -e
+          set -x
+          
+          # Aceita as licenças e instala a versão 33.0.2 que o build precisa
+          yes | sdkmanager --install "build-tools;33.0.2"
       - name: Construir o APK de teste (Debug)
         script: |
+          set -e
+          set -x
+
           cordova build android --debug
     artifacts:
-      # ESTA LINHA FOI CORRIGIDA
+      # O caminho para o APK gerado
       - platforms/android/app/build/outputs/apk/debug/app-debug.apk
+    publishing:
+      # Opcional, mas recomendado: Receba um e-mail com o APK
+      email:
+        recipients:
+          - seu-email@exemplo.com # <-- MUDE PARA O SEU E-MAIL
+        notify:
+          success: true
+          failure: true
